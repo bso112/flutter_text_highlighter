@@ -39,7 +39,7 @@ class BibleViewer extends StatelessWidget {
   }
 }
 
-class Highlight {
+class Sentence {
   final String text;
 
   //inclusive
@@ -49,7 +49,7 @@ class Highlight {
   final int end;
   final Color color;
 
-  const Highlight(this.text, this.start, this.end, this.color);
+  const Sentence(this.text, this.start, this.end, this.color);
 
   @override
   String toString() {
@@ -61,7 +61,7 @@ class Highlight {
 class HighlightableTextController extends ChangeNotifier {
   final String text;
   final Color defaultTextColor;
-  List<Highlight> _sentences;
+  List<Sentence> _sentences;
 
   List<Color> colors;
 
@@ -71,17 +71,17 @@ class HighlightableTextController extends ChangeNotifier {
     colors.fillRange(0, colors.length, defaultTextColor);
   }
 
-  void addHighlight(Highlight highlight) {
+  void addHighlight(Sentence highlight) {
     _sentences.add(highlight);
     notifyListeners();
   }
 
-  void removeHighlight(Highlight highlight) {
+  void removeHighlight(Sentence highlight) {
     _sentences.remove(highlight);
     notifyListeners();
   }
 
-  List<Highlight> getSentences() {
+  List<Sentence> getSentences() {
     colors.fillRange(0, colors.length, defaultTextColor);
     for (var sentence in _sentences) {
       colors.fillRange(sentence.start, sentence.end, sentence.color);
@@ -92,14 +92,14 @@ class HighlightableTextController extends ChangeNotifier {
     int startIndex = 0;
     for (int i = 1; i < colors.length; ++i) {
       if (colors[i] != oldValue) {
-        _sentences.add(Highlight(
+        _sentences.add(Sentence(
             text.substring(startIndex, i), startIndex, i, colors[startIndex]));
 
         startIndex = i;
         oldValue = colors[startIndex];
       }
     }
-    _sentences.add(Highlight(text.substring(startIndex, text.length),
+    _sentences.add(Sentence(text.substring(startIndex, text.length),
         startIndex, text.length, defaultTextColor));
 
     return _sentences;
@@ -121,7 +121,7 @@ class HighlightableText extends StatelessWidget {
       print("len: ${testStr.length}");
       var colors = [Colors.red, Colors.green, Colors.amber];
       controller.addHighlight(
-          Highlight("", start, end, colors[Random().nextInt(colors.length)]));
+          Sentence("", start, end, colors[Random().nextInt(colors.length)]));
     }));
   }
 
