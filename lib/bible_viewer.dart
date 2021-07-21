@@ -1,10 +1,7 @@
-import 'dart:collection';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiver/iterables.dart';
-
+import 'dart:math';
 import 'custom_text_selection_control.dart';
 
 void main() {
@@ -12,7 +9,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key key}) : super(key: key);
+  MyApp({Key key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +21,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-final testStr =
+final String testStr =
     "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.";
 
 class BibleViewer extends StatelessWidget {
@@ -34,8 +31,7 @@ class BibleViewer extends StatelessWidget {
         body: Container(
       child: Center(
         child: ChangeNotifierProvider(
-            create: (_) => HighlightableTextController(
-                testStr, [Highlight(100, 110, Colors.red)]),
+            create: (_) => HighlightableTextController(testStr, Colors.black),
             child: HighlightableText()),
       ),
     ));
@@ -48,47 +44,69 @@ class Highlight {
 
   //exclusive
   final int end;
-  final MaterialColor color;
+  final Color color;
 
   const Highlight(this.start, this.end, this.color);
+
+  factory Highlight.empty() {
+    return Highlight(0, 0, Colors.black);
+  }
+
+  bool isEmpty() {
+    return start == 0 && end == 0 && color == Colors.black;
+  }
+
+  @override
+  String toString() {
+    // TODO: implement toString
+    return "start: $start end: $end color: $color";
+  }
 }
 
 class Sentence {
   final String text;
-  final MaterialColor color;
+  final Color color;
 
   const Sentence(this.text, {this.color});
 }
 
 class HighlightableTextController extends ChangeNotifier {
   final String text;
+  final Color defaultTextColor;
+  List<Highlight> _highlights;
 
-  final List<Highlight> _highlights;
+  List<Color> colors;
 
-  HighlightableTextController(this.text, this._highlights);
+  HighlightableTextController(this.text, this.defaultTextColor) {
+    _highlights = List();
+    colors = List(text.length);
+    colors.fillRange(0, colors.length, defaultTextColor);
+  }
 
   void addHighlight(Highlight highlight) {
     _highlights.add(highlight);
-    _highlights.sort((a, b) {
-      return a.start.compareTo(b.start);
-    });
     notifyListeners();
   }
 
   List<Sentence> getSentences() {
-    List<Sentence> result = List();
-    result.add(Sentence(text.substring(0, _highlights.first.start)));
-    for (int i = 0; i < _highlights.length; i++) {
-      result.add(Sentence(
-          text.substring(_highlights[i].start, _highlights[i].end),
-          color: _highlights[i].color));
-
-      if (i + 1 >= _highlights.length) break;
-
-      result.add(Sentence(
-          text.substring(_highlights[i].end, _highlights[i + 1].start)));
+    for (var highlight in _highlights) {
+      colors.fillRange(
+          highlight.start, highlight.end, highlight.color); //알파블렌드 해야
     }
-    result.add(Sentence(text.substring(_highlights.last.end, text.length)));
+    List<Sentence> result = List();
+    Color oldValue = colors.first;
+    int startIndex = 0;
+    for (int i = 1; i < colors.length; ++i) {
+      if (colors[i] != oldValue) {
+        result.add(
+            Sentence(text.substring(startIndex, i), color: colors[startIndex]));
+        startIndex = i;
+        oldValue = colors[startIndex];
+      }
+    }
+    result.add(Sentence(text.substring(startIndex, text.length),
+        color: defaultTextColor));
+
     return result;
   }
 }
@@ -105,7 +123,10 @@ class HighlightableText extends StatelessWidget {
         selectionControls:
             CustomTextSelectionControls(customButton: (start, end) {
       print("start: $start end: $end");
-      controller.addHighlight(Highlight(start, end, Colors.red));
+      print("len: ${testStr.length}");
+      var colors = [Colors.red, Colors.green, Colors.amber];
+      controller.addHighlight(
+          Highlight(start, end, colors[Random().nextInt(colors.length)]));
     }));
   }
 
