@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
@@ -39,6 +40,8 @@ class BibleViewer extends StatelessWidget {
 }
 
 class Highlight {
+  final String text;
+
   //inclusive
   final int start;
 
@@ -46,15 +49,7 @@ class Highlight {
   final int end;
   final Color color;
 
-  const Highlight(this.start, this.end, this.color);
-
-  factory Highlight.empty() {
-    return Highlight(0, 0, Colors.black);
-  }
-
-  bool isEmpty() {
-    return start == 0 && end == 0 && color == Colors.black;
-  }
+  const Highlight(this.text, this.start, this.end, this.color);
 
   @override
   String toString() {
@@ -63,51 +58,51 @@ class Highlight {
   }
 }
 
-class Sentence {
-  final String text;
-  final Color color;
-
-  const Sentence(this.text, {this.color});
-}
-
 class HighlightableTextController extends ChangeNotifier {
   final String text;
   final Color defaultTextColor;
-  List<Highlight> _highlights;
+  List<Highlight> _sentences;
 
   List<Color> colors;
 
   HighlightableTextController(this.text, this.defaultTextColor) {
-    _highlights = List();
+    _sentences = List();
     colors = List(text.length);
     colors.fillRange(0, colors.length, defaultTextColor);
   }
 
   void addHighlight(Highlight highlight) {
-    _highlights.add(highlight);
+    _sentences.add(highlight);
     notifyListeners();
   }
 
-  List<Sentence> getSentences() {
-    for (var highlight in _highlights) {
-      colors.fillRange(
-          highlight.start, highlight.end, highlight.color); //알파블렌드 해야
+  void removeHighlight(Highlight highlight) {
+    _sentences.remove(highlight);
+    notifyListeners();
+  }
+
+  List<Highlight> getSentences() {
+    colors.fillRange(0, colors.length, defaultTextColor);
+    for (var sentence in _sentences) {
+      colors.fillRange(sentence.start, sentence.end, sentence.color);
     }
-    List<Sentence> result = List();
+    _sentences.clear();
+
     Color oldValue = colors.first;
     int startIndex = 0;
     for (int i = 1; i < colors.length; ++i) {
       if (colors[i] != oldValue) {
-        result.add(
-            Sentence(text.substring(startIndex, i), color: colors[startIndex]));
+        _sentences.add(Highlight(
+            text.substring(startIndex, i), startIndex, i, colors[startIndex]));
+
         startIndex = i;
         oldValue = colors[startIndex];
       }
     }
-    result.add(Sentence(text.substring(startIndex, text.length),
-        color: defaultTextColor));
+    _sentences.add(Highlight(text.substring(startIndex, text.length),
+        startIndex, text.length, defaultTextColor));
 
-    return result;
+    return _sentences;
   }
 }
 
@@ -126,14 +121,20 @@ class HighlightableText extends StatelessWidget {
       print("len: ${testStr.length}");
       var colors = [Colors.red, Colors.green, Colors.amber];
       controller.addHighlight(
-          Highlight(start, end, colors[Random().nextInt(colors.length)]));
+          Highlight("", start, end, colors[Random().nextInt(colors.length)]));
     }));
   }
 
   List<InlineSpan> _buildText() {
     return controller
         .getSentences()
-        .map((e) => TextSpan(text: e.text, style: TextStyle(color: e.color)))
+        .map((sentence) => TextSpan(
+            text: sentence.text,
+            style: TextStyle(color: sentence.color),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                controller.removeHighlight(sentence);
+              }))
         .toList();
   }
 }
